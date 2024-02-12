@@ -233,6 +233,7 @@ class era5(object):
                 year.to_netcdf(fout)
 
     def process_specific_himiditiy(self):
+        for iY in range(self.year_init, self.year_end+1):
         """
         PROCESS SPECIFIC HUMIDITY 
         
@@ -240,20 +241,22 @@ class era5(object):
         """
         
         # read
-        d2m_path = self.path_FORCING + '/ERA5_d2m_y' + str(iY) + '.nc'
-        sp_path  = self.path_FORCING + '/ERA5_sp_y' + str(iY) + '.nc'
-        d2m = xr.open_dataarray(d2m_path, chunks=self.chunks)
-        sp  = xr.open_dataarray(sp_path,  chunks=self.chunks) 
+            d2m_path = self.path_FORCING + '/ERA5_d2m_y' + str(iY) + '.nc'
+            sp_path  = self.path_FORCING + '/ERA5_sp_y' + str(iY) + '.nc'
+            d2m = xr.open_dataarray(d2m_path, chunks=self.chunks)
+            sp  = xr.open_dataarray(sp_path,  chunks=self.chunks) 
         
         # calculate sph
-        esat = 611.21 * np.exp( 17.502 * (d2m-273.16) / (d2m-32.19) )
-        dyrvap = 287.0597 / 461.5250
-        sph = dyrvap * esat / ( sp - (1-dyrvap) * esat)
-        sph.attrs = {'units':'1', 'standard_name':'specific humidity'}
-        
+            esat = 611.21 * np.exp( 17.502 * (d2m-273.16) / (d2m-32.19) )
+            dyrvap = 287.0597 / 461.5250
+            sph = dyrvap * esat / ( sp - (1-dyrvap) * esat)
+            sph.attrs = {'units':'1', 'standard_name':'specific humidity'}
+            self.sph=sph
+        # name
+            self.sph.name='sph'
         # save
-        fout = self.path_FORCING + '/ERA5_SPH_y' + str(iY) + '.nc'
-        sph.to_netcdf(fout)
+            fout = self.path_FORCING + '/ERA5_SPH_y' + str(iY) + '.nc'
+            sph.to_netcdf(fout,unlimited_dims='time')
 
     def process_all(self, step1=True, step2=True):
         os.system("mkdir {0} {1}".format(
@@ -279,8 +282,7 @@ class era5(object):
                 self.interpolate_by_year(nameVar)
         
         if self.sph_ON : # get specific humidity
-            for iY in range(self.year_init, self.year_end+1):
-                self.process_specific_himiditiy()
+            self.process_specific_himiditiy()
 
 if __name__ == '__main__':
     era = era5()

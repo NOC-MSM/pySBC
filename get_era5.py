@@ -32,13 +32,14 @@ YEAR_0   = config.y0        # Initial year
 YEAR_1   = config.y1        # Final year
 VAR_INST = config.var_list  # Variables to process
 out_path = config.raw_path  # Path for saving data
+LSM      = False            # Get LSM
  
 #======================= CORE CODE ===========================
 
 ## Initiate connection to server
 server = cdsapi.Client()
 
-## LOOP OVER YEARS
+# LOOP OVER YEARS
 for iY in range( YEAR_0, YEAR_1+1 ) :
 
     ## LOOP OVER SURFACE INSTANTANEOUS VARIABLES
@@ -91,6 +92,21 @@ for iY in range( YEAR_0, YEAR_1+1 ) :
         ]
     },
     '{0}'.format( fname ) )
+
+if LSM:
+    # get land-sea mask
+    server.retrieve(
+        'reanalysis-era5-single-levels',
+        {
+            'product_type': 'reanalysis',
+            'format': 'netcdf',
+            'variable': 'land_sea_mask',
+            'time': '00:00',
+            'day': '01',
+            'month': '01',
+            'year': '2004',
+        },
+        outpath + 'ERA5_LSM_20040101.nc')
 
 # future option
 # to add lat-lon extent

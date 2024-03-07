@@ -232,7 +232,7 @@ class era5(object):
             if not os.path.exists( fout ) :
                 year.to_netcdf(fout)
 
-    def process_specific_himiditiy(self):
+    def process_specific_himiditiy(self, iY):
         """
         PROCESS SPECIFIC HUMIDITY 
         
@@ -250,10 +250,13 @@ class era5(object):
         dyrvap = 287.0597 / 461.5250
         sph = dyrvap * esat / ( sp - (1-dyrvap) * esat)
         sph.attrs = {'units':'1', 'standard_name':'specific humidity'}
+
+        # name variable
+        sph.name = 'sph'
         
         # save
-        fout = self.path_FORCING + '/ERA5_SPH_y' + str(iY) + '.nc'
-        sph.to_netcdf(fout)
+        fout = self.path_FORCING + '/ERA5_sph_y' + str(iY) + '.nc'
+        sph.to_netcdf(fout, unlimited_dims="time")
 
     def process_all(self, step1=True, step2=True):
         os.system("mkdir {0} {1}".format(
@@ -280,7 +283,7 @@ class era5(object):
         
         if self.sph_ON : # get specific humidity
             for iY in range(self.year_init, self.year_end+1):
-                self.process_specific_himiditiy()
+                self.process_specific_himiditiy(iY)
 
 if __name__ == '__main__':
     era = era5()

@@ -9,7 +9,7 @@ class LandSeaMask(object):
     def __init__(self):
         # set paths
         self.tmp_path    = config.tmp_path
-        self.global_mask = config.raw_path + '/ERA5/era5_atmos_landseamask.nc' 
+        self.global_mask = config.head + '/ryapat/ERA5_LSM_20040101.nc'
 
         self.cut_off = 0.5  # flooding cell fraction
 
@@ -95,7 +95,7 @@ class LandSeaMask(object):
         # cut desired to region
         self.cut_region_ncks()
 
-        # get extracted data
+        # get extracted and nemo dummy data
         da = xr.open_dataarray(self.extracted_path, chunks=-1)
 
         # check time
@@ -108,6 +108,9 @@ class LandSeaMask(object):
         # mask (sea = 0, land = 1)
         seas = da < self.cut_off
         da = xr.where(seas, 0, 1)
+
+        # capitalise variable
+        da.name = "LSM"
 
         # save
         save_extension = "/ERA5_LSM_flood_{0}.nc".format(str(self.cut_off))

@@ -19,3 +19,5 @@ def check_latitude(ds):
         ds = ds.isel(X=slice(None,None,-1))
     if (dlat < 0).all():
         ds = ds.isel(Y=slice(None,None,-1))
+
+    return ds

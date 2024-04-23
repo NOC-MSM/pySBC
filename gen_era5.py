@@ -183,7 +183,7 @@ class era5(object):
                 self.ds = self.format_nc(ds, nameVar)
 
                 # check orientation of latitude
-                _utils.check_latitude(self.ds)
+                self.ds = _utils.check_latitude(self.ds)
 
                 # maintain encoding for storage savings
                 scale_factor = ds0.encoding['scale_factor']

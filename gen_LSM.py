@@ -103,7 +103,7 @@ class LandSeaMask(object):
             da = da.isel(time=0).drop("time")
 
         # ensure conventional latitude
-        _utils.check_latitude(da)
+        da = _utils.check_latitude(da)
 
         # mask (sea = 0, land = 1)
         seas = da < self.cut_off

@@ -1,4 +1,5 @@
 import xarray as xr
+import numpy as np
 import config
 import os
 import _utils
@@ -30,6 +31,27 @@ class LandSeaMask(object):
         # conform longitude format
         if self.west < 0 : self.west = 360. + self.west
         if self.east < 0 : self.east = 360. + self.east
+
+    def format_lat_lon(self, da):
+        """
+        Add netCDF attributes and format coordinates
+        
+        Almost a duplicate of gen_era5
+        """
+
+        # mesh lat and lon
+        mlon, mlat = np.meshgrid(da.longitude, da.latitude)
+        lon_attrs={'long_name':'longitude','units':'degrees_east'}
+        lat_attrs={'long_name':'latitude', 'units':'degrees_north'}
+        mlon = xr.DataArray(mlon, dims=['Y','X'], attrs=lon_attrs)
+        mlat = xr.DataArray(mlat, dims=['Y','X'], attrs=lat_attrs)
+      
+        # assign X/Y as indexes
+        da = da.drop(['longitude','latitude'])
+        da = da.rename({'longitude':'X','latitude':'Y'})
+        da = da.assign_coords({'longitude':mlon,'latitude':mlat})
+      
+        return da
 
     def cut_region_ncks(self):
         """
@@ -101,6 +123,9 @@ class LandSeaMask(object):
         # check time
         if "time" in da.dims: 
             da = da.isel(time=0).drop("time")
+
+        # set 2d mesh for lat and lon
+        da = self.format_lat_lon(da)
 
         # ensure conventional latitude
         da = _utils.check_latitude(da)

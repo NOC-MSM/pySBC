@@ -19,7 +19,7 @@ conda env create -f environment.yml
 
 ### Usage
 Before processing, the user is required to set the desired domain choices in
-config.py. The processing is then done in a two steps:
+config.py. The processing is then done via two steps:
 1. Download data (get_era5.py)
 2. Process data (gen_era5.py, gen_LSM.py)
 

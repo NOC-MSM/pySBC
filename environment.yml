@@ -1,8 +1,6 @@
 name: pysbc
 channels:
-  - anaconda
   - conda-forge
-  - defaults
 dependencies:
   - python==3.8.10
   - numpy==1.22.3

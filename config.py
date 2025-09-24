@@ -11,20 +11,21 @@ sph_ON = False
 # Variable list
 var_list = { 
        "10m_u_component_of_wind" : "u10",
-       "10m_v_component_of_wind" : "v10",
-       "2m_temperature"          : "t2m", 
-       "mean_sea_level_pressure" : "msl", 
-       "mean_snowfall_rate"      : "msr" ,
-       "mean_surface_downward_long_wave_radiation_flux"  : "msdwlwrf",
-       "mean_surface_downward_short_wave_radiation_flux" : "msdwswrf",
-       "mean_total_precipitation_rate" : "mtpr" }
+       }
+#       "10m_v_component_of_wind" : "v10",
+#       "2m_temperature"          : "t2m", 
+#       "mean_sea_level_pressure" : "msl", 
+#       "mean_snowfall_rate"      : "msr" ,
+#       "mean_surface_downward_long_wave_radiation_flux"  : "msdwlwrf",
+#       "mean_surface_downward_short_wave_radiation_flux" : "msdwswrf",
+#       "mean_total_precipitation_rate" : "mtpr" }
 
 if sph_ON :
    var_list[ "surface_pressure"  ] = 'sp'
    var_list[ "2m_dewpoint_temperature" ] = 'd2m'
 
 head = '/projectsa/NEMO' # head path
-raw_path       = head + '/Forcing'    # raw data
+raw_path       = '.' #head + '/Forcing'    # raw data
 tmp_path       = head + '/ryapat/Extract'  # temp extraction space
 processed_path = head + '/ryapat/Forcing'  # processed forcing
 

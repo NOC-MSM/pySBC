@@ -156,7 +156,6 @@ def gen_ukesm(stash_codes):
     year_range = np.arange(year0,year1)
     
     month_dirs = ["01","04","07","10","01"]
-    #month_dirs = ["01"]
     month_list = [["jan","feb"],
                   ["mar","apr","may"],
                   ["jun","jul","aug"],
@@ -184,45 +183,29 @@ def gen_ukesm(stash_codes):
                     src_path = glosat_path + f'u-ck651/{year_dir}{month_dir}01T0000Z/'
                     if month == 'dec': year_dir = year_dir - 1
                    
-                    #if j < 7:
-                        #fn = src_path + f"ck651a.pd{year_dir}{month}.pp"
                     fn = src_path + f"ck651a.p5{year_dir}{month}.pp"
                     cube = iris.load_cube(fn, code)
-                    #ds = extract_iris_cube(fn)#, cube_indices)
                     with ProgressBar():
                         da = xr.DataArray.from_iris(cube).load()
+
                     print ('')
                     print ("loaded name ", da.name)
                     print ('')
+
                     if 'height' in da.coords:
                         da = da.drop('height')
-                    #da = extract_glosat(year_dir, month_dir, month)
 
                     da = format_coords(da)
-                    print (da)
 
                     if da.name in ["x_wind","y_wind"]:
                         da = flood_fill_sbc(da, is_wind=True)
                     else:
                         da = flood_fill_sbc(da)
 
-                    print (da)
-                    #ds1 = format_coords(ds1)
-
-                    #ds_split_interped = []
-                    #for time, ds_split in ds1.groupby("time"):
-                    #    print (time)
-                    #    ds1_acum.append(dep_interpolate_lev(ds_split))
-
-
                     da_acum.append(da)
         
-            #da = xr.concat(da_acum, "time")
             da = xr.concat(da_acum, "time")
     
-
-        #extract_vars(var_map, ds0, year=year)
-        #extract_vars(var_map, ds1, year=year)
         da.name = var_map[da.name]
 
         # save

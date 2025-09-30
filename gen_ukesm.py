@@ -26,10 +26,11 @@ var_map = {
         "precipitation_flux": "mtpr",
         "specific_humidity": "sph"}
         
-stash_codes = ["m01s03i237",
-               "m01s16i222",
-               "m01s03i209",
-               "m01s03i210",
+#stash_codes = ["m01s03i237",
+#               "m01s16i222",
+#               "m01s03i209",
+#               "m01s03i210",
+stash_codes = [
                "m01s03i236",
                "m01s01i201",
                "m01s02i201",
@@ -96,15 +97,16 @@ def format_coords(da):
 
     # mesh lat and lon
     mlon, mlat = np.meshgrid(da.longitude, da.latitude)
-    lon_attrs={'long_name':'longitude','units':'degrees_east'}
-    lat_attrs={'long_name':'latitude', 'units':'degrees_north'}
-    mlon = xr.DataArray(mlon, dims=['y','x'], attrs=lon_attrs)
-    mlat = xr.DataArray(mlat, dims=['y','x'], attrs=lat_attrs)
+    #lon_attrs={'long_name':'longitude','units':'degrees_east'}
+    #lat_attrs={'long_name':'latitude', 'units':'degrees_north'}
+    #mlon = xr.DataArray(mlon, dims=['y','x'], attrs=lon_attrs)
+    #mlat = xr.DataArray(mlat, dims=['y','x'], attrs=lat_attrs)
   
     # assign X/Y as indexes
     da = da.drop(['longitude','latitude'])
     da = da.rename({'longitude':'x','latitude':'y'})
-    da = da.assign_coords({'longitude':mlon,'latitude':mlat})
+    da = da.assign_coords({'longitude':(["y","x"], mlon),
+                           'latitude':(["y","x"], mlat)})
 
     return da
 
@@ -124,6 +126,29 @@ def extract_vars(var_map, ds, year):
         print (out_fn)
         da.to_netcdf(out_fn)
 
+def flood_fill_sbc(da, is_wind=False):
+    """
+    flood fill sbc based on land sea mask
+    """
+
+    # get LSM derived from UKESM domain_cfg - see gen_land_sea_mask()
+    path = "/gws/nopw/j04/verify_oce/NEMO/Preprocessing/"
+    lsm = xr.open_dataarray(path + "SBC/LSM.nc")
+
+    # interpolate from u/v grid to t grid
+    if is_wind:
+        da = interpolate(da, lsm, name=da.name, method="linear")
+
+    # mask da
+    da_msk = da.where(lsm == 0)
+
+    # bug with "where" means lon coords are dropped
+    da_msk = da_msk.assign_coords(longitude=da.longitude)
+
+    da_filled= interpolate(da_msk, da_msk, name=da.name, method="nearest")
+
+    return da_filled
+
 def gen_ukesm(stash_codes):
     year0 = 1850
     year1 = 1851
@@ -131,6 +156,7 @@ def gen_ukesm(stash_codes):
     year_range = np.arange(year0,year1)
     
     month_dirs = ["01","04","07","10","01"]
+    #month_dirs = ["01"]
     month_list = [["jan","feb"],
                   ["mar","apr","may"],
                   ["jun","jul","aug"],
@@ -172,8 +198,15 @@ def gen_ukesm(stash_codes):
                         da = da.drop('height')
                     #da = extract_glosat(year_dir, month_dir, month)
 
-        
                     da = format_coords(da)
+                    print (da)
+
+                    if da.name in ["x_wind","y_wind"]:
+                        da = flood_fill_sbc(da, is_wind=True)
+                    else:
+                        da = flood_fill_sbc(da)
+
+                    print (da)
                     #ds1 = format_coords(ds1)
 
                     #ds_split_interped = []
@@ -181,11 +214,13 @@ def gen_ukesm(stash_codes):
                     #    print (time)
                     #    ds1_acum.append(dep_interpolate_lev(ds_split))
 
+
                     da_acum.append(da)
         
             #da = xr.concat(da_acum, "time")
             da = xr.concat(da_acum, "time")
     
+
         #extract_vars(var_map, ds0, year=year)
         #extract_vars(var_map, ds1, year=year)
         da.name = var_map[da.name]
@@ -247,22 +282,75 @@ def main():
             # rename variable
 
             # save
+def interpolate(src, tgt, name="unknown", method="nearest"):
+
+    print (src)
+    print( len(src.longitude.dims))
+    if len(src.longitude.dims) == 1:
+        mlon, mlat = np.meshgrid(src.longitude, src.latitude)
+
+        src_lon = mlon.flatten()
+        src_lat = mlat.flatten()
+        print ("option a")
+    else:
+        print ("option b")
+        src_lon = src.longitude.data.flatten()
+        src_lat = src.latitude.data.flatten()
+    
+    values = (src.values.flatten())
+
+    print (values.shape)
+    print (src_lon.shape)
+    src_lon = src_lon[~np.isnan(values)]
+    src_lat = src_lat[~np.isnan(values)]
+    values = values[~np.isnan(values)]
+    
+    # format source sdata
+    points = list(zip(src_lat, src_lon))
+
+    tgt_lon =  tgt.longitude.load()
+    tgt_lat =  tgt.latitude.load()
+    
+    target = (tgt_lat, tgt_lon)
+    
+    n_grid = griddata(points, values, target, method=method)
+
+    n_grid_xr = xr.DataArray(name=name, data=n_grid, dims=('y','x'))
+
+    da_rgrd = n_grid_xr.assign_coords(
+           dict(latitude=(['y','x'], tgt.latitude.data),
+                longitude=(['y','x'], tgt.longitude.data)))
+    return da_rgrd
 
 def gen_land_sea_mask(path):
     """ generate land-sea mask from parent domain configuration file """
 
     # get land sea mask
-    cfg = xr.open_dataset(path + "INI/NAARC/NAARC_cfg.nc", chunks="auto")
-    lsm = xr.where(cfg.bottom_level == 0, 1, 0)
+    cfg = xr.open_dataset(path + "DOM/UKESM/domcfg_UKESM1p1_gdept.nc", chunks="auto")
+    lsm = xr.where(cfg.top_level == 0, 1, 0)
     lsm.name = "LSM"
+    latitude = cfg.nav_lat.data
+    longitude = xr.where(cfg.nav_lon.data < 0, cfg.nav_lon.data + 360,
+                                               cfg.nav_lon.data)
     lsm = lsm.assign_coords(
-             dict(latitude=(['y','x'], cfg.nav_lat.data),
-                  longitude=(['y','x'], cfg.nav_lon.data)))
+             dict(latitude=(['y','x'], latitude),
+                  longitude=(['y','x'], longitude)))
+
+    # interpolate to atmosphere grid
+    out_path = "/gws/nopw/j04/verify_oce/NEMO/Preprocessing/SBC/"
+    out_fn = out_path + "glosat_u10_y1850.nc"
+    da = xr.open_dataarray(out_fn)
+
+
+    rgrd = interpolate(lsm, da, name="LSM", method="linear")
+    lsm = interpolate(rgrd, da, name="LSM", method="nearest")
+    
+    lsm = xr.where(lsm == 0, 0, 1)
 
     # save
     with ProgressBar():
         lsm.to_netcdf(path + "SBC/LSM.nc")
 
 domcfg_path = "/gws/nopw/j04/verify_oce/NEMO/Preprocessing/"
-gen_land_sea_mask(domcfg_path)
-#gen_ukesm(stash_codes)
+#gen_land_sea_mask(domcfg_path)
+gen_ukesm(stash_codes)

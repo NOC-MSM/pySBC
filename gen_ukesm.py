@@ -20,33 +20,46 @@ var_map = {
         "y_wind": "v10",
         "air_temperature": "t1500mm",
         "air_pressure_at_sea_level": "mslp",
-        "surface_net_downward_longwave_flux": "msdwlwrf",
-        "surface_net_downward_shortwave_flux": "msdwswrf",
+        "surface_downwelling_longwave_flux_in_air": "msdwlwrf",
+        "surface_downwelling_shortwave_flux_in_air": "msdwswrf",
         "snowfall_flux": "msr",
         "precipitation_flux": "mtpr",
         "specific_humidity": "sph"}
         
-#stash_codes = ["m01s03i237",
-#               "m01s16i222",
-#               "m01s03i209",
-#               "m01s03i210",
-stash_codes = [
+stash_codes = ["m01s03i237",
+               "m01s16i222",
+               "m01s03i209",
+               "m01s03i210",
                "m01s03i236",
-               "m01s01i201",
-               "m01s02i201",
+               "m01s02i207",
+               "m01s01i235",
                "m01s05i215",
                "m01s05i216"]
 
+#stash_codes = [
+#               "m01s02i207",
+#               "m01s01i235"
+#               ]
+
+#### for tracing variables
 #glosat_path = '/gws/nopw/j04/glosat/production/UKESM/raw/'
 #src_path = glosat_path + f'u-ck651/18500101T0000Z/'
-#fn = src_path + f"ck651a.p51850jan.pp"
-#for code in list(var_map.keys()):
-#    print ("code: ", code)
-#    cubes = iris.load(fn, code)
-#    for cube in cubes:
+#fn_pre = src_path + "ck651a.{}1850jan.pp"
+## pd has daily data
+#for nm in ["p5","pa","pd","pm"]:
+#    print (nm)
+#    fn = fn_pre.format(nm)
+#    try:
+#        cube = iris.load(fn,"surface_downwelling_shortwave_flux_in_air")[0]
 #        print (cube)
+#    except:
+#        continue
+#    #for code in list(var_map.keys()):
+#    #    print ("code: ", code)
+#    #    cubes = iris.load(fn, code)
+#    #    for cube in cubes:
+#    #        print (cube)
 #print (akdsjf)
-
 
 def extract_iris_cube(fn, cube_indices):
     ''' extract ukesm data and move to netcdf formats '''
@@ -64,7 +77,7 @@ def extract_iris_cube(fn, cube_indices):
     return xr.merge(da_vars)
 
 def extract_glosat(year_dir, month_dir, month):
-    glosat_path = '/gws/nopw/j04/glosat/production/UKESM/raw/'
+    glosat_path = '/gws/ssde/j25a/glosat/production/UKESM/raw/'
     src_path = glosat_path + f'u-ck651/{year_dir}{month_dir}01T0000Z/'
     
     if month == 'dec': year_dir = year_dir - 1
@@ -121,7 +134,7 @@ def extract_vars(var_map, ds, year):
         da.name = var_map[var]
 
         # save
-        out_path = "/gws/nopw/j04/verify_oce/NEMO/Preprocessing/SBC/"
+        out_path = "/gws/ssde/j25a/verify_oce/NEMO/Preprocessing/SBC/"
         out_fn = out_path + "glosat_" + var_map[var] + f"_y{year}.nc"
         print (out_fn)
         da.to_netcdf(out_fn)
@@ -132,7 +145,7 @@ def flood_fill_sbc(da, is_wind=False):
     """
 
     # get LSM derived from UKESM domain_cfg - see gen_land_sea_mask()
-    path = "/gws/nopw/j04/verify_oce/NEMO/Preprocessing/"
+    path = "/gws/ssde/j25a/verify_oce/NEMO/Preprocessing/"
     lsm = xr.open_dataarray(path + "SBC/LSM.nc")
 
     # interpolate from u/v grid to t grid
@@ -149,11 +162,9 @@ def flood_fill_sbc(da, is_wind=False):
 
     return da_filled
 
-def gen_ukesm(stash_codes):
-    year0 = 1850
-    year1 = 1851
+def gen_ukesm(stash_codes, y0=1850, y1=1851):
     
-    year_range = np.arange(year0,year1)
+    year_range = np.arange(y0,y1)
     
     month_dirs = ["01","04","07","10","01"]
     month_list = [["jan","feb"],
@@ -162,7 +173,7 @@ def gen_ukesm(stash_codes):
                   ["sep","oct","nov"],
                   ["dec"]]
     
-    glosat_path = '/gws/nopw/j04/glosat/production/UKESM/raw/'
+    glosat_path = '/gws/ssde/j25a/glosat/production/UKESM/raw/'
     
     for j, code in enumerate(stash_codes):
 
@@ -206,13 +217,13 @@ def gen_ukesm(stash_codes):
         
             da = xr.concat(da_acum, "time")
     
-        da.name = var_map[da.name]
+            da.name = var_map[da.name]
 
-        # save
-        out_path = "/gws/nopw/j04/verify_oce/NEMO/Preprocessing/SBC/"
-        out_fn = out_path + "glosat_" + da.name + f"_y{year}.nc"
-        print (out_fn)
-        da.to_netcdf(out_fn)
+            # save
+            out_path = "/gws/ssde/j25a/verify_oce/NEMO/Preprocessing/SBC/"
+            out_fn = out_path + "glosat_" + da.name + f"_y{year}.nc"
+            print (out_fn)
+            da.to_netcdf(out_fn)
 
 ### -------------------------------- ###
 
@@ -320,7 +331,7 @@ def gen_land_sea_mask(path):
                   longitude=(['y','x'], longitude)))
 
     # interpolate to atmosphere grid
-    out_path = "/gws/nopw/j04/verify_oce/NEMO/Preprocessing/SBC/"
+    out_path = "/gws/ssde/j25a/verify_oce/NEMO/Preprocessing/SBC/"
     out_fn = out_path + "glosat_u10_y1850.nc"
     da = xr.open_dataarray(out_fn)
 
@@ -334,6 +345,18 @@ def gen_land_sea_mask(path):
     with ProgressBar():
         lsm.to_netcdf(path + "SBC/LSM.nc")
 
-domcfg_path = "/gws/nopw/j04/verify_oce/NEMO/Preprocessing/"
+domcfg_path = "/gws/ssde/j25a/verify_oce/NEMO/Preprocessing/DOM/"
 #gen_land_sea_mask(domcfg_path)
-gen_ukesm(stash_codes)
+gen_ukesm(stash_codes, y0=1940, y1=1970)
+
+#def temp_func_generate_zeros(field, year, val=0):
+#    out_path = "/gws/ssde/j25a/verify_oce/NEMO/Preprocessing/SBC/"
+#    in_fn = out_path + "glosat_" + field + f"_y{year}.nc"
+#
+#    ds = xr.open_dataset(in_fn, chunks="auto")
+#    ds[field] = (["time","y","x"],np.ones_like(ds[field].data) * val)
+#
+#    out_fn = out_path + "unforced_" + field + f"_y{year}.nc"
+#    ds.to_netcdf(out_fn)
+    
+#temp_func_generate_zeros("t1500mm", 1850, val=15)
